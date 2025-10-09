@@ -4,6 +4,8 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class Book extends Model
 {
@@ -17,18 +19,28 @@ class Book extends Model
         'published_year',
     ];
 
-    public function author()
+    public function author(): BelongsTo
     {
         return $this->belongsTo(Author::class);
     }
 
-    public function category()
+    public function category(): BelongsTo
     {
         return $this->belongsTo(Category::class);
     }
 
-    public function publisher()
+    public function publisher(): BelongsTo
     {
         return $this->belongsTo(Publisher::class);
+    }
+
+    /**
+     * The users that have borrowed the book.
+     */
+    public function users(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'borrowings')
+            ->withPivot('borrowed_at', 'returned_at')
+            ->withTimestamps();
     }
 }
