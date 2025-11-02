@@ -37,10 +37,11 @@ class Book extends Model
     /**
      * The users that have borrowed the book.
      */
-    public function users(): BelongsToMany
+    public function users()
     {
         return $this->belongsToMany(User::class, 'borrowings')
-            ->withPivot('borrowed_at', 'returned_at')
-            ->withTimestamps();
+                    ->withPivot('id', 'borrowed_at', 'returned_at')
+                    ->withTimestamps();
     }
+
 }

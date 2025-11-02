@@ -49,10 +49,11 @@ class User extends Authenticatable
     /**
      * The books that belong to the user.
      */
-    public function books(): BelongsToMany
+    public function books()
     {
         return $this->belongsToMany(Book::class, 'borrowings')
-            ->withPivot('borrowed_at', 'returned_at')
-            ->withTimestamps();
+                    ->withPivot('id', 'borrowed_at', 'returned_at')
+                    ->withTimestamps();
     }
+
 }
