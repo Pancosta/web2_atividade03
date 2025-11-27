@@ -5,7 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Support\Facades\Storage;
 
 class Book extends Model
 {
@@ -17,6 +17,7 @@ class Book extends Model
         'category_id',
         'publisher_id',
         'published_year',
+        'cover_image',
     ];
 
     public function author(): BelongsTo
@@ -40,8 +41,24 @@ class Book extends Model
     public function users()
     {
         return $this->belongsToMany(User::class, 'borrowings')
-                    ->withPivot('id', 'borrowed_at', 'returned_at')
-                    ->withTimestamps();
+            ->withPivot('id', 'borrowed_at', 'returned_at')
+            ->withTimestamps();
+    }
+    public function getCoverUrlAttribute()
+    {
+        if ($this->cover_image) {
+            return asset('storage/' . $this->cover_image);
+        }
+
+        return asset('images/cover-default.png'); // imagem padrão em public/images
+    }
+    protected static function booted()
+    {
+        static::deleting(function ($book) {
+            if ($book->cover_image && Storage::disk('public')->exists($book->cover_image)) {
+                Storage::disk('public')->delete($book->cover_image);
+            }
+        });
     }
 
 }

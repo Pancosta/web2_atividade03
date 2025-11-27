@@ -7,7 +7,9 @@ use App\Models\Publisher;
 use App\Models\Author;
 use App\Models\Category;
 use Illuminate\Http\Request;
-   use App\Models\User;
+use App\Models\User;
+use Illuminate\Support\Facades\Storage;
+
 
 class BookController extends Controller
 {
@@ -24,7 +26,7 @@ class BookController extends Controller
         $book->load(['author', 'publisher', 'category']);
         $users = User::all();
 
-        return view('books.show', compact('book','users'));
+        return view('books.show', compact('book', 'users'));
     }
 
 
@@ -67,12 +69,22 @@ class BookController extends Controller
             'publisher_id' => 'required|exists:publishers,id',
             'author_id' => 'required|exists:authors,id',
             'category_id' => 'required|exists:categories,id',
+            'cover' => 'nullable|image|max:2048' // <= 2MB
         ]);
 
-        Book::create($request->all());
+        $data = $request->only(['title', 'publisher_id', 'author_id', 'category_id']);
+
+        // armazenar arquivo se enviado
+        if ($request->hasFile('cover')) {
+            $path = $request->file('cover')->store('covers', 'public'); // retorna 'covers/xxx.jpg'
+            $data['cover_image'] = $path;
+        }
+
+        Book::create($data);
 
         return redirect()->route('books.index')->with('success', 'Livro criado com sucesso.');
     }
+
 
     // EDIT - Formulário de edição (Select)
     public function edit(Book $book)
@@ -92,18 +104,38 @@ class BookController extends Controller
             'publisher_id' => 'required|exists:publishers,id',
             'author_id' => 'required|exists:authors,id',
             'category_id' => 'required|exists:categories,id',
+            'cover' => 'nullable|image|max:2048'
         ]);
 
-        $book->update($request->all());
+        $data = $request->only(['title', 'publisher_id', 'author_id', 'category_id']);
+
+        if ($request->hasFile('cover')) {
+            // excluir imagem antiga (se existir e for do storage)
+            if ($book->cover_image && Storage::disk('public')->exists($book->cover_image)) {
+                Storage::disk('public')->delete($book->cover_image);
+            }
+
+            // salvar nova
+            $path = $request->file('cover')->store('covers', 'public');
+            $data['cover_image'] = $path;
+        }
+
+        $book->update($data);
 
         return redirect()->route('books.index')->with('success', 'Livro atualizado com sucesso.');
     }
 
+
     // DELETE - Excluir livro
     public function destroy(Book $book)
     {
+        if ($book->cover_image && Storage::disk('public')->exists($book->cover_image)) {
+            Storage::disk('public')->delete($book->cover_image);
+        }
+
         $book->delete();
 
         return redirect()->route('books.index')->with('success', 'Livro excluído com sucesso.');
     }
+
 }
