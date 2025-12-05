@@ -37,35 +37,52 @@
 
                     <!-- Left Side Of Navbar -->
                     <ul class="navbar-nav me-auto">
-                        <li class="nav-item">
-                            <a class="nav-link" href="{{ route('books.index') }}">Livros</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="{{ route('authors.index') }}">Autores</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="{{ route('publishers.index') }}">Editoras</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="{{ route('users.index') }}">Usuários</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="{{ route('categories.index') }}">Categorias</a>
-                        </li>
+
+                        <!-- Sempre visível para usuários logados (qualquer papel) -->
+                        @auth
+                            <li class="nav-item">
+                                <a class="nav-link" href="{{ route('books.index') }}">Livros</a>
+                            </li>
+
+                            <!-- BIBLIOTECÁRIO + ADMIN -->
+                            @if (auth()->user()->role === 'bibliotecario' || auth()->user()->role === 'admin')
+
+                                <li class="nav-item">
+                                    <a class="nav-link" href="{{ route('authors.index') }}">Autores</a>
+                                </li>
+
+                                <li class="nav-item">
+                                    <a class="nav-link" href="{{ route('publishers.index') }}">Editoras</a>
+                                </li>
+
+                                <li class="nav-item">
+                                    <a class="nav-link" href="{{ route('categories.index') }}">Categorias</a>
+                                </li>
+
+                            @endif
+
+                            <!-- ADMIN APENAS -->
+                            @if (auth()->user()->role === 'admin')
+                                <li class="nav-item">
+                                    <a class="nav-link" href="{{ route('users.index') }}">Usuários</a>
+                                </li>
+                            @endif
+                        @endauth
+
                     </ul>
 
                     <!-- Right Side Of Navbar -->
                     <ul class="navbar-nav ms-auto">
 
                         @guest
-                            <!-- Botão de Login -->
+                            <!-- Login -->
                             <li class="nav-item">
                                 <a class="nav-link btn btn-sm btn-outline-primary mx-1 px-3" href="{{ route('login') }}">
                                     Login
                                 </a>
                             </li>
 
-                            <!-- Botão de Registro -->
+                            <!-- Registrar -->
                             @if (Route::has('register'))
                                 <li class="nav-item">
                                     <a class="nav-link btn btn-sm btn-primary mx-1 px-3 text-white"
@@ -74,13 +91,13 @@
                                     </a>
                                 </li>
                             @endif
-
                         @else
-                            <!-- Dropdown quando logado -->
+
+                            <!-- Dropdown -->
                             <li class="nav-item dropdown">
                                 <a id="navbarDropdown" class="nav-link dropdown-toggle" href="#" role="button"
                                     data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false" v-pre>
-                                    {{ Auth::user()->name }}
+                                    {{ Auth::user()->name }} ({{ ucfirst(Auth::user()->role) }})
                                 </a>
 
                                 <div class="dropdown-menu dropdown-menu-end">
@@ -96,6 +113,7 @@
 
                                 </div>
                             </li>
+
                         @endguest
 
                     </ul>
@@ -103,7 +121,6 @@
                 </div>
             </div>
         </nav>
-
 
         <!-- CONTEÚDO -->
         <main class="py-4">

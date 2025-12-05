@@ -7,29 +7,69 @@ use App\Models\User;
 
 class UserController extends Controller
 {
+    private function onlyAdmin()
+    {
+        if (!auth()->check() || auth()->user()->role !== 'admin') {
+            return redirect('/')
+                ->with('error', 'Você não tem permissão para acessar essa página.');
+        }
+        return null;
+    }
+
     // LISTAGEM DE USUÁRIOS
     public function index()
     {
-        $users = User::paginate(10); // Paginação de 10 usuários por página
+        if ($resp = $this->onlyAdmin()) return $resp;
+
+        $users = User::paginate(10);
         return view('users.index', compact('users'));
     }
 
     // EXIBIR DETALHES DO USUÁRIO
     public function show(User $user)
     {
+        if ($resp = $this->onlyAdmin()) return $resp;
+
         return view('users.show', compact('user'));
     }
 
     // FORMULÁRIO DE EDIÇÃO
     public function edit(User $user)
     {
-        return view('users.edit', compact('user'));
+        if ($resp = $this->onlyAdmin()) return $resp;
+
+        $roles = ['admin', 'bibliotecario', 'cliente'];
+        return view('users.edit', compact('user', 'roles'));
     }
 
     // SALVAR ALTERAÇÕES
     public function update(Request $request, User $user)
     {
-        $user->update($request->only('name', 'email'));
+        if ($resp = $this->onlyAdmin()) return $resp;
+
+        $request->validate([
+            'name' => 'required',
+            'email' => 'required|email',
+            'role' => 'required'
+        ]);
+
+        // Impede admin de remover o próprio papel
+        if ($user->id == auth()->id() && $request->role !== 'admin') {
+            return redirect()->back()
+                ->with('error', 'Você não pode remover seu próprio papel de admin.');
+        }
+
+        // Impede remover o último admin
+        if ($user->role === 'admin' && $request->role !== 'admin') {
+            $countAdmins = User::where('role', 'admin')->count();
+            if ($countAdmins <= 1) {
+                return redirect()->back()
+                    ->with('error', 'O sistema precisa ter pelo menos 1 administrador.');
+            }
+        }
+
+        // Atualiza dados
+        $user->update($request->only('name', 'email', 'role'));
 
         return redirect()->route('users.index')->with('success', 'Usuário atualizado com sucesso.');
     }

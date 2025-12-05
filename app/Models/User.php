@@ -17,11 +17,12 @@ class User extends Authenticatable
      *
      * @var array<int, string>
      */
-    protected $fillable = [
-        'name',
-        'email',
-        'password',
-    ];
+   protected $fillable = [
+    'name',
+    'email',
+    'password',
+    'role',
+];
 
     /**
      * The attributes that should be hidden for serialization.
@@ -52,8 +53,27 @@ class User extends Authenticatable
     public function books()
     {
         return $this->belongsToMany(Book::class, 'borrowings')
-                    ->withPivot('id', 'borrowed_at', 'returned_at')
-                    ->withTimestamps();
+            ->withPivot('id', 'borrowed_at', 'returned_at')
+            ->withTimestamps();
     }
+    public function isAdmin(): bool
+    {
+        return $this->role === 'admin';
+    }
+
+    public function isBibliotecario(): bool
+    {
+        return $this->role === 'bibliotecario';
+    }
+
+    public function isCliente(): bool
+    {
+        return $this->role === 'cliente';
+    }
+    public function scopeRole($query, $role)
+    {
+        return $query->where('role', $role);
+    }
+
 
 }

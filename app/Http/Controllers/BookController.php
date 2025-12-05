@@ -10,17 +10,32 @@ use Illuminate\Http\Request;
 use App\Models\User;
 use Illuminate\Support\Facades\Storage;
 
-
 class BookController extends Controller
 {
-    // LISTAGEM DE LIVROS (index) com eager loading e paginação
+    private function onlyAdminOrBibliotecario()
+    {
+        if (!auth()->check()) {
+            return redirect('/')->with('error', 'Você precisa estar logado.');
+        }
+
+        $role = auth()->user()->role;
+
+        if ($role !== 'admin' && $role !== 'bibliotecario') {
+            return redirect('/')
+                ->with('error', 'Você não tem permissão para realizar esta ação.');
+        }
+
+        return null;
+    }
+
+    // LISTAGEM DE LIVROS (index)
     public function index()
     {
         $books = Book::with(['author'])->paginate(20);
         return view('books.index', compact('books'));
     }
 
-    // SHOW - Exibir detalhes de um livro
+    // SHOW - Detalhes
     public function show(Book $book)
     {
         $book->load(['author', 'publisher', 'category']);
@@ -30,15 +45,18 @@ class BookController extends Controller
     }
 
 
-    // FORMULÁRIO DE CRIAÇÃO (Input ID)
+    // CREATE (Input ID)
     public function createWithId()
     {
+        if ($resp = $this->onlyAdminOrBibliotecario()) return $resp;
         return view('books.create-id');
     }
 
-    // SALVAR LIVRO (Input ID)
+    // STORE (Input ID)
     public function storeWithId(Request $request)
     {
+        if ($resp = $this->onlyAdminOrBibliotecario()) return $resp;
+
         $request->validate([
             'title' => 'required|string|max:255',
             'publisher_id' => 'required|exists:publishers,id',
@@ -51,9 +69,11 @@ class BookController extends Controller
         return redirect()->route('books.index')->with('success', 'Livro criado com sucesso.');
     }
 
-    // FORMULÁRIO DE CRIAÇÃO (Select)
+    // CREATE (Select)
     public function createWithSelect()
     {
+        if ($resp = $this->onlyAdminOrBibliotecario()) return $resp;
+
         $publishers = Publisher::all();
         $authors = Author::all();
         $categories = Category::all();
@@ -61,44 +81,11 @@ class BookController extends Controller
         return view('books.create-select', compact('publishers', 'authors', 'categories'));
     }
 
-    // SALVAR LIVRO (Select)
+    // STORE (Select)
     public function storeWithSelect(Request $request)
     {
-        $request->validate([
-            'title' => 'required|string|max:255',
-            'publisher_id' => 'required|exists:publishers,id',
-            'author_id' => 'required|exists:authors,id',
-            'category_id' => 'required|exists:categories,id',
-            'cover' => 'nullable|image|max:2048' // <= 2MB
-        ]);
+        if ($resp = $this->onlyAdminOrBibliotecario()) return $resp;
 
-        $data = $request->only(['title', 'publisher_id', 'author_id', 'category_id']);
-
-        // armazenar arquivo se enviado
-        if ($request->hasFile('cover')) {
-            $path = $request->file('cover')->store('covers', 'public'); // retorna 'covers/xxx.jpg'
-            $data['cover_image'] = $path;
-        }
-
-        Book::create($data);
-
-        return redirect()->route('books.index')->with('success', 'Livro criado com sucesso.');
-    }
-
-
-    // EDIT - Formulário de edição (Select)
-    public function edit(Book $book)
-    {
-        $publishers = Publisher::all();
-        $authors = Author::all();
-        $categories = Category::all();
-
-        return view('books.edit', compact('book', 'publishers', 'authors', 'categories'));
-    }
-
-    // UPDATE - Salvar alterações do livro
-    public function update(Request $request, Book $book)
-    {
         $request->validate([
             'title' => 'required|string|max:255',
             'publisher_id' => 'required|exists:publishers,id',
@@ -110,12 +97,49 @@ class BookController extends Controller
         $data = $request->only(['title', 'publisher_id', 'author_id', 'category_id']);
 
         if ($request->hasFile('cover')) {
-            // excluir imagem antiga (se existir e for do storage)
+            $path = $request->file('cover')->store('covers', 'public');
+            $data['cover_image'] = $path;
+        }
+
+        Book::create($data);
+
+        return redirect()->route('books.index')->with('success', 'Livro criado com sucesso.');
+    }
+
+
+    // EDIT
+    public function edit(Book $book)
+    {
+        if ($resp = $this->onlyAdminOrBibliotecario()) return $resp;
+
+        $publishers = Publisher::all();
+        $authors = Author::all();
+        $categories = Category::all();
+
+        return view('books.edit', compact('book', 'publishers', 'authors', 'categories'));
+    }
+
+    // UPDATE
+    public function update(Request $request, Book $book)
+    {
+        if ($resp = $this->onlyAdminOrBibliotecario()) return $resp;
+
+        $request->validate([
+            'title' => 'required|string|max:255',
+            'publisher_id' => 'required|exists:publishers,id',
+            'author_id' => 'required|exists:authors,id',
+            'category_id' => 'required|exists:categories,id',
+            'cover' => 'nullable|image|max:2048'
+        ]);
+
+        $data = $request->only(['title', 'publisher_id', 'author_id', 'category_id']);
+
+        if ($request->hasFile('cover')) {
+
             if ($book->cover_image && Storage::disk('public')->exists($book->cover_image)) {
                 Storage::disk('public')->delete($book->cover_image);
             }
 
-            // salvar nova
             $path = $request->file('cover')->store('covers', 'public');
             $data['cover_image'] = $path;
         }
@@ -125,10 +149,11 @@ class BookController extends Controller
         return redirect()->route('books.index')->with('success', 'Livro atualizado com sucesso.');
     }
 
-
-    // DELETE - Excluir livro
+    // DELETE
     public function destroy(Book $book)
     {
+        if ($resp = $this->onlyAdminOrBibliotecario()) return $resp;
+
         if ($book->cover_image && Storage::disk('public')->exists($book->cover_image)) {
             Storage::disk('public')->delete($book->cover_image);
         }
@@ -137,5 +162,4 @@ class BookController extends Controller
 
         return redirect()->route('books.index')->with('success', 'Livro excluído com sucesso.');
     }
-
 }
