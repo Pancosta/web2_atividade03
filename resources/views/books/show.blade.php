@@ -19,24 +19,37 @@
             </div>
         </div>
 
-        <!-- Registrar Empréstimo (somente admin) -->
-        @if(auth()->user()->role === 'admin')
+        @php
+            $userRole = auth()->user()->role ?? 'cliente';
+            $podeGerenciar = in_array($userRole, ['admin', 'bibliotecario']);
+        @endphp
+
+        <!-- Registrar Empréstimo (admin ou bibliotecario) -->
+        @if($podeGerenciar)
             <div class="card mb-4">
                 <div class="card-header">Registrar Empréstimo</div>
                 <div class="card-body">
-                    <form action="{{ route('books.borrow', $book) }}" method="POST">
-                        @csrf
-                        <div class="mb-3">
-                            <label for="user_id" class="form-label">Usuário</label>
-                            <select class="form-select" id="user_id" name="user_id" required>
-                                <option value="" selected>Selecione um usuário</option>
-                                @foreach($users as $user)
-                                    <option value="{{ $user->id }}">{{ $user->name }}</option>
-                                @endforeach
-                            </select>
+
+                    @if($emprestimoAberto)
+                        <div class="alert alert-warning">
+                            ❗ Este livro já está emprestado para <strong>{{ $emprestimoAberto->user->name }}</strong>.
                         </div>
-                        <button type="submit" class="btn btn-success">Registrar Empréstimo</button>
-                    </form>
+                    @else
+                        <form action="{{ route('books.borrow', $book) }}" method="POST">
+                            @csrf
+                            <div class="mb-3">
+                                <label for="user_id" class="form-label">Usuário</label>
+                                <select class="form-select" id="user_id" name="user_id" required>
+                                    <option value="" selected>Selecione um usuário</option>
+                                    @foreach($users as $user)
+                                        <option value="{{ $user->id }}">{{ $user->name }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <button type="submit" class="btn btn-success">Registrar Empréstimo</button>
+                        </form>
+                    @endif
+
                 </div>
             </div>
         @endif
@@ -45,7 +58,8 @@
         <div class="card">
             <div class="card-header">Histórico de Empréstimos</div>
             <div class="card-body">
-                @if($book->users->isEmpty())
+
+                @if($book->borrowings->isEmpty())
                     <p>Nenhum empréstimo registrado.</p>
                 @else
                     <table class="table">
@@ -58,15 +72,21 @@
                             </tr>
                         </thead>
                         <tbody>
-                            @foreach($book->users as $user)
+                            @foreach($book->borrowings as $borrow)
                                 <tr>
-                                    <td><a href="{{ route('users.show', $user->id) }}">{{ $user->name }}</a></td>
-                                    <td>{{ $user->pivot->borrowed_at }}</td>
-                                    <td>{{ $user->pivot->returned_at ?? 'Em Aberto' }}</td>
                                     <td>
-                                        <!-- Botão "Devolver" apenas para admin -->
-                                        @if(auth()->user()->role === 'admin' && is_null($user->pivot->returned_at))
-                                            <form action="{{ route('borrowings.return', $user->pivot->id) }}" method="POST">
+                                        <a href="{{ route('users.show', $borrow->user->id) }}">
+                                            {{ $borrow->user->name }}
+                                        </a>
+                                    </td>
+
+                                    <td>{{ $borrow->borrowed_at }}</td>
+
+                                    <td>{{ $borrow->returned_at ?? 'Em Aberto' }}</td>
+
+                                    <td>
+                                        @if($podeGerenciar && is_null($borrow->returned_at))
+                                            <form action="{{ route('borrowings.return', $borrow->id) }}" method="POST">
                                                 @csrf
                                                 @method('PATCH')
                                                 <button class="btn btn-warning btn-sm">Devolver</button>
@@ -80,7 +100,9 @@
                         </tbody>
                     </table>
                 @endif
+
             </div>
         </div>
+
     </div>
 @endsection

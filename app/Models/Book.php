@@ -36,7 +36,7 @@ class Book extends Model
     }
 
     /**
-     * The users that have borrowed the book.
+     * Users que já pegaram o livro emprestado.
      */
     public function users()
     {
@@ -44,14 +44,30 @@ class Book extends Model
             ->withPivot('id', 'borrowed_at', 'returned_at')
             ->withTimestamps();
     }
+
+    /**
+     * Empréstimos diretos do livro (necessário para verificar empréstimo em aberto).
+     */
+    public function borrowings()
+    {
+        return $this->hasMany(Borrowing::class);
+    }
+
+    /**
+     * URL da capa.
+     */
     public function getCoverUrlAttribute()
     {
         if ($this->cover_image) {
             return asset('storage/' . $this->cover_image);
         }
 
-        return asset('images/cover-default.png'); // imagem padrão em public/images
+        return asset('images/cover-default.png');
     }
+
+    /**
+     * Excluir capa ao deletar livro.
+     */
     protected static function booted()
     {
         static::deleting(function ($book) {
@@ -60,5 +76,4 @@ class Book extends Model
             }
         });
     }
-
 }

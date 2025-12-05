@@ -38,24 +38,36 @@ class BookController extends Controller
     // SHOW - Detalhes
     public function show(Book $book)
     {
+        // Carrega autor, editora e categoria normalmente
         $book->load(['author', 'publisher', 'category']);
+
+        // Carrega todos os usuários para o select do empréstimo
         $users = User::all();
 
-        return view('books.show', compact('book', 'users'));
+        // Busca empréstimo aberto (returned_at = NULL)
+        $emprestimoAberto = $book->borrowings()
+            ->whereNull('returned_at')
+            ->with('user') // carrega o usuário junto
+            ->first();
+
+        return view('books.show', compact('book', 'users', 'emprestimoAberto'));
     }
+
 
 
     // CREATE (Input ID)
     public function createWithId()
     {
-        if ($resp = $this->onlyAdminOrBibliotecario()) return $resp;
+        if ($resp = $this->onlyAdminOrBibliotecario())
+            return $resp;
         return view('books.create-id');
     }
 
     // STORE (Input ID)
     public function storeWithId(Request $request)
     {
-        if ($resp = $this->onlyAdminOrBibliotecario()) return $resp;
+        if ($resp = $this->onlyAdminOrBibliotecario())
+            return $resp;
 
         $request->validate([
             'title' => 'required|string|max:255',
@@ -72,7 +84,8 @@ class BookController extends Controller
     // CREATE (Select)
     public function createWithSelect()
     {
-        if ($resp = $this->onlyAdminOrBibliotecario()) return $resp;
+        if ($resp = $this->onlyAdminOrBibliotecario())
+            return $resp;
 
         $publishers = Publisher::all();
         $authors = Author::all();
@@ -84,7 +97,8 @@ class BookController extends Controller
     // STORE (Select)
     public function storeWithSelect(Request $request)
     {
-        if ($resp = $this->onlyAdminOrBibliotecario()) return $resp;
+        if ($resp = $this->onlyAdminOrBibliotecario())
+            return $resp;
 
         $request->validate([
             'title' => 'required|string|max:255',
@@ -110,7 +124,8 @@ class BookController extends Controller
     // EDIT
     public function edit(Book $book)
     {
-        if ($resp = $this->onlyAdminOrBibliotecario()) return $resp;
+        if ($resp = $this->onlyAdminOrBibliotecario())
+            return $resp;
 
         $publishers = Publisher::all();
         $authors = Author::all();
@@ -122,7 +137,8 @@ class BookController extends Controller
     // UPDATE
     public function update(Request $request, Book $book)
     {
-        if ($resp = $this->onlyAdminOrBibliotecario()) return $resp;
+        if ($resp = $this->onlyAdminOrBibliotecario())
+            return $resp;
 
         $request->validate([
             'title' => 'required|string|max:255',
@@ -152,7 +168,8 @@ class BookController extends Controller
     // DELETE
     public function destroy(Book $book)
     {
-        if ($resp = $this->onlyAdminOrBibliotecario()) return $resp;
+        if ($resp = $this->onlyAdminOrBibliotecario())
+            return $resp;
 
         if ($book->cover_image && Storage::disk('public')->exists($book->cover_image)) {
             Storage::disk('public')->delete($book->cover_image);
