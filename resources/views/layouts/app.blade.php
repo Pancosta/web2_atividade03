@@ -58,7 +58,9 @@
                                 <li class="nav-item">
                                     <a class="nav-link" href="{{ route('categories.index') }}">Categorias</a>
                                 </li>
-
+                                <li class="nav-item">
+                                    <a class="nav-link" href="{{ route('users.debit') }}">Multas</a>
+                                </li>
                             @endif
 
                             <!-- ADMIN APENAS -->

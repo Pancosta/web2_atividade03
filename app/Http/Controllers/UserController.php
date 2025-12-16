@@ -19,7 +19,8 @@ class UserController extends Controller
     // LISTAGEM DE USUÁRIOS
     public function index()
     {
-        if ($resp = $this->onlyAdmin()) return $resp;
+        if ($resp = $this->onlyAdmin())
+            return $resp;
 
         $users = User::paginate(10);
         return view('users.index', compact('users'));
@@ -28,7 +29,8 @@ class UserController extends Controller
     // EXIBIR DETALHES DO USUÁRIO
     public function show(User $user)
     {
-        if ($resp = $this->onlyAdmin()) return $resp;
+        if ($resp = $this->onlyAdmin())
+            return $resp;
 
         return view('users.show', compact('user'));
     }
@@ -36,7 +38,8 @@ class UserController extends Controller
     // FORMULÁRIO DE EDIÇÃO
     public function edit(User $user)
     {
-        if ($resp = $this->onlyAdmin()) return $resp;
+        if ($resp = $this->onlyAdmin())
+            return $resp;
 
         $roles = ['admin', 'bibliotecario', 'cliente'];
         return view('users.edit', compact('user', 'roles'));
@@ -45,7 +48,8 @@ class UserController extends Controller
     // SALVAR ALTERAÇÕES
     public function update(Request $request, User $user)
     {
-        if ($resp = $this->onlyAdmin()) return $resp;
+        if ($resp = $this->onlyAdmin())
+            return $resp;
 
         $request->validate([
             'name' => 'required',
@@ -73,4 +77,19 @@ class UserController extends Controller
 
         return redirect()->route('users.index')->with('success', 'Usuário atualizado com sucesso.');
     }
+    public function usersWithDebit()
+    {
+        $users = User::where('debit', '>', 0)->get();
+        return view('users.debit', compact('users'));
+    }
+
+    public function clearDebit(User $user)
+    {
+        $user->update(['debit' => 0]);
+
+        return redirect()
+            ->route('users.debit')
+            ->with('success', 'Débito zerado com sucesso.');
+    }
+
 }

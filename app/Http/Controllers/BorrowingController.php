@@ -6,41 +6,50 @@ use Illuminate\Http\Request;
 use App\Models\User;
 use App\Models\Book;
 use App\Models\Borrowing;
+use Carbon\Carbon;
 
 class BorrowingController extends Controller
 {
-    // Registrar empréstimo
+    // REGISTRAR EMPRÉSTIMO
     public function store(Request $request, Book $book)
     {
         $request->validate([
             'user_id' => 'required|exists:users,id',
         ]);
 
-        // REGRA 1: livro não pode estar emprestado
-        $emprestimoAbertoLivro = Borrowing::where('book_id', $book->id)
+        $user = User::findOrFail($request->user_id);
+
+        // Bloqueia se usuário tem débito
+        if ($user->debit > 0) {
+            return redirect()
+                ->back()
+                ->with('error', 'Usuário possui débito pendente e não pode realizar empréstimos.');
+        }
+
+        // Bloqueia se livro já está emprestado
+        $emprestimoAberto = Borrowing::where('book_id', $book->id)
             ->whereNull('returned_at')
             ->exists();
 
-        if ($emprestimoAbertoLivro) {
+        if ($emprestimoAberto) {
             return redirect()
-                ->route('books.show', $book)
+                ->back()
                 ->with('error', 'Este livro já possui um empréstimo em aberto.');
         }
 
-        // REGRA 2: usuário pode ter no máximo 5 empréstimos em aberto
-        $emprestimosAbertosUsuario = Borrowing::where('user_id', $request->user_id)
+        // Limite de 5 livros por usuário
+        $ativos = Borrowing::where('user_id', $user->id)
             ->whereNull('returned_at')
             ->count();
 
-        if ($emprestimosAbertosUsuario >= 5) {
+        if ($ativos >= 5) {
             return redirect()
-                ->route('books.show', $book)
-                ->with('error', 'Este usuário já possui 5 empréstimos em aberto.');
+                ->back()
+                ->with('error', 'Este usuário já possui 5 empréstimos ativos.');
         }
 
-        // Registrar empréstimo
         Borrowing::create([
-            'user_id' => $request->user_id,
+            'user_id' => $user->id,
             'book_id' => $book->id,
             'borrowed_at' => now(),
         ]);
@@ -50,19 +59,39 @@ class BorrowingController extends Controller
             ->with('success', 'Empréstimo registrado com sucesso.');
     }
 
-    // Registrar devolução
+    // DEVOLVER LIVRO
     public function returnBook(Borrowing $borrowing)
     {
+        $now = Carbon::now();
+        $borrowedAt = Carbon::parse($borrowing->borrowed_at);
+        $limitDate = $borrowedAt->copy()->addDays(15);
+
+        $multa = 0;
+
+        if ($now->greaterThan($limitDate)) {
+            $diasAtraso = $limitDate->diffInDays($now);
+            $multa = $diasAtraso * 0.50;
+
+            $user = $borrowing->user;
+            $user->debit += $multa;
+            $user->save();
+        }
+
         $borrowing->update([
-            'returned_at' => now(),
+            'returned_at' => $now,
         ]);
 
         return redirect()
             ->route('books.show', $borrowing->book_id)
-            ->with('success', 'Devolução registrada com sucesso.');
+            ->with(
+                'success',
+                $multa > 0
+                    ? "Livro devolvido com atraso. Multa aplicada: R$ " . number_format($multa, 2, ',', '.')
+                    : "Livro devolvido com sucesso."
+            );
     }
 
-    // Histórico de empréstimos de um usuário
+    // HISTÓRICO DE EMPRÉSTIMOS
     public function userBorrowings(User $user)
     {
         $borrowings = $user->books()

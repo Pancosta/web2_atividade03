@@ -68,3 +68,9 @@ Route::get('/users/{user}/borrowings', [BorrowingController::class, 'userBorrowi
 
 Route::patch('/borrowings/{borrowing}/return', [BorrowingController::class, 'returnBook'])
     ->name('borrowings.return');
+
+Route::get('/users-with-debit', [UserController::class, 'usersWithDebit'])
+    ->name('users.debit');
+
+Route::patch('/users/{user}/clear-debit', [UserController::class, 'clearDebit'])
+    ->name('users.clearDebit');
